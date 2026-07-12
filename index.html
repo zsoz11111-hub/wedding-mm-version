@@ -1,197 +1,176 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="서진성 ㅁ 김성은 벼론합니다">
-    <meta property="og:description" content="2026년 11월 15일, 저희의 시작을 축복해주세요.">
-    <meta property="og:image" content="https://zsoz11111-hub.github.io/wedding/thumb.jpg">
-    <title>모바일 청첩잠</title>
+<script>
+    // 화면에 표시되는 한글의 모든 'ㅇ'을 'ㅁ'으로 변환
+    // 예: 청첩장 → 첨첩잠, 서진성 → 서진섬
+    (function () {
+        const HANGUL_BASE = 0xAC00;
+        const HANGUL_END = 0xD7A3;
+        const MEDIAL_COUNT = 21;
+        const FINAL_COUNT = 28;
+        const SYLLABLES_PER_INITIAL = MEDIAL_COUNT * FINAL_COUNT;
 
-    <style>
-        /* 귀여운 폰트 가져오기 */
-        @import url('https://fonts.googleapis.com/css2?family=Hi+Melody&family=Poor+Story&display=swap');
+        // 초성 ㅇ → ㅁ
+        const INITIAL_IEUNG = 11;
+        const INITIAL_MIEUM = 6;
 
-        /* [디자인 설정 영역] - 파스텔 톤으로 수정 */
-        :root {
-            --main-color: #ffb7c5; /* 연한 핑크 */
-            --sub-color: #fffacd; /* 레몬 쉬폰 */
-            --bg-color: #fff5f5; /* 아주 연한 핑크 베이지 */
-            --text-color: #555555; /* 진한 회색 */
-            --accent-color: #ff7f50; /* 산호색 (포인트) */
-            --cute-font: 'Poor Story', cursive;
-            --title-font: 'Hi Melody', cursive;
+        // 종성 ㅇ → ㅁ
+        const FINAL_IEUNG = 21;
+        const FINAL_MIEUM = 16;
+
+        function replaceIeungWithMieum(text) {
+            return Array.from(text).map((char) => {
+                const code = char.codePointAt(0);
+
+                // 완성형 한글 음절 변환
+                if (code >= HANGUL_BASE && code <= HANGUL_END) {
+                    const syllableIndex = code - HANGUL_BASE;
+
+                    let initialIndex = Math.floor(
+                        syllableIndex / SYLLABLES_PER_INITIAL
+                    );
+
+                    const medialIndex = Math.floor(
+                        (syllableIndex % SYLLABLES_PER_INITIAL)
+                        / FINAL_COUNT
+                    );
+
+                    let finalIndex = syllableIndex % FINAL_COUNT;
+
+                    if (initialIndex === INITIAL_IEUNG) {
+                        initialIndex = INITIAL_MIEUM;
+                    }
+
+                    if (finalIndex === FINAL_IEUNG) {
+                        finalIndex = FINAL_MIEUM;
+                    }
+
+                    const changedCode =
+                        HANGUL_BASE
+                        + initialIndex * SYLLABLES_PER_INITIAL
+                        + medialIndex * FINAL_COUNT
+                        + finalIndex;
+
+                    return String.fromCodePoint(changedCode);
+                }
+
+                // 단독 자모 변환
+                if (char === "ㅇ") return "ㅁ";
+                if (char === "ᄋ") return "ᄆ";
+                if (char === "ᆼ") return "ᆷ";
+
+                return char;
+            }).join("");
         }
 
-        * { box-sizing: border-box; }
+        function convertVisibleText(root = document.body) {
+            if (!root) return;
 
-        body {
-            margin: 0; padding: 0;
-            font-family: var(--cute-font);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.7;
-            overflow-x: hidden;
-            font-size: 1.1rem; /* 전반적인 폰트 크기 확대 */
+            const walker = document.createTreeWalker(
+                root,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode(node) {
+                        const parentTag = node.parentElement?.tagName;
+
+                        // JavaScript와 CSS 코드는 변환하지 않음
+                        if (
+                            ["SCRIPT", "STYLE", "NOSCRIPT"]
+                                .includes(parentTag)
+                        ) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+
+                        return node.nodeValue.trim()
+                            ? NodeFilter.FILTER_ACCEPT
+                            : NodeFilter.FILTER_REJECT;
+                    }
+                }
+            );
+
+            const textNodes = [];
+
+            while (walker.nextNode()) {
+                textNodes.push(walker.currentNode);
+            }
+
+            textNodes.forEach((node) => {
+                node.nodeValue =
+                    replaceIeungWithMieum(node.nodeValue);
+            });
+
+            // 이미지 설명과 입력 안내 문구도 변환
+            root
+                .querySelectorAll(
+                    "[alt], [title], [aria-label], [placeholder]"
+                )
+                .forEach((element) => {
+                    [
+                        "alt",
+                        "title",
+                        "aria-label",
+                        "placeholder"
+                    ].forEach((attr) => {
+                        if (element.hasAttribute(attr)) {
+                            element.setAttribute(
+                                attr,
+                                replaceIeungWithMieum(
+                                    element.getAttribute(attr)
+                                )
+                            );
+                        }
+                    });
+                });
         }
 
-        /* 컨테이너 */
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background-color: #fff;
-            min-height: 100vh;
-            box-shadow: 0 0 15px rgba(0,0,0,0.05);
-            position: relative;
-            padding-bottom: 60px;
-            border: 10px solid var(--sub-color); /* 귀여운 테두리 */
-            border-radius: 20px;
+        function convertPageText() {
+            convertVisibleText(document.body);
+
+            // 브라우저 탭 제목
+            document.title =
+                replaceIeungWithMieum(document.title);
+
+            // 카카오톡 등 공유 미리보기 문구
+            document
+                .querySelectorAll(
+                    'meta[property="og:title"], ' +
+                    'meta[property="og:description"]'
+                )
+                .forEach((meta) => {
+                    meta.content =
+                        replaceIeungWithMieum(meta.content);
+                });
         }
 
-        /* 1. 메인 커버 */
-        .cover {
-            position: relative;
-            width: 100%;
-            height: 90vh; /* 살짝 줄임 */
-            background-image: url('main_cute.jpg'); /* 귀여운 메인 이미지로 변경 */
-            background-size: cover;
-            background-position: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding-bottom: 40px;
-            text-align: center;
-            color: #555;
-            text-shadow: 1px 1px 3px rgba(255,255,255,0.8);
-            border-bottom-left-radius: 40px;
-            border-bottom-right-radius: 40px;
-        }
-        .cover-title { font-family: var(--title-font); font-size: 4rem; margin-bottom: 10px; color: var(--accent-color); }
-        .cover-names { font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; letter-spacing: 3px; }
-        .cover-date { font-size: 1.2rem; font-weight: bold; }
+        convertPageText();
 
-        /* 섹션 공통 */
-        .section { padding: 40px 20px; text-align: center; border-bottom: 5px dotted var(--main-color); } /* 점선 테두리 */
-        .sec-title { color: var(--accent-color); font-size: 1.6rem; font-weight: bold; margin-bottom: 25px; letter-spacing: 2px; font-family: var(--title-font); }
+        // 알림창 등 나중에 추가되는 문구도 자동 변환
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const parentTag =
+                            node.parentElement?.tagName;
 
-        /* 인사말, 달력 */
-        .greeting { font-size: 1.2rem; color: var(--text-color); line-height: 2.2; margin-bottom: 30px;}
-        .highlight-name { font-weight: bold; color: var(--accent-color); font-size: 1.3rem; }
-        .calendar-box { border: 3px solid var(--main-color); padding: 25px; border-radius: 20px; margin: 20px 10px; background-color: #fff; }
-        .calendar-title { font-size: 1.4rem; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font); }
-        .d-day { font-weight: bold; color: var(--accent-color); font-size: 1.2rem; background-color: var(--sub-color); padding: 5px 15px; border-radius: 10px; display: inline-block; margin-bottom: 10px;}
+                        if (
+                            !["SCRIPT", "STYLE", "NOSCRIPT"]
+                                .includes(parentTag)
+                        ) {
+                            node.nodeValue =
+                                replaceIeungWithMieum(
+                                    node.nodeValue
+                                );
+                        }
+                    } else if (
+                        node.nodeType === Node.ELEMENT_NODE
+                    ) {
+                        convertVisibleText(node);
+                    }
+                });
+            });
+        });
 
-        /* 연락처 섹션 스타일 */
-        .contact-photo-area { display: flex; gap: 20px; margin-bottom: 30px; }
-        .contact-photo-box { flex: 1; }
-        .contact-photo { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 50%; background: #eee; margin-bottom: 10px; border: 3px solid var(--sub-color); }
-        .contact-label { font-size: 1.1rem; color: #777; font-weight: bold; background-color: var(--sub-color); display: inline-block; padding: 5px 15px; border-radius: 10px;}
-
-        .contact-list { text-align: left; padding: 0 10px; font-size: 1.1rem;}
-        .contact-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #ccc; }
-        .contact-name { font-weight: bold; font-size: 1.2rem; }
-        .contact-role { font-size: 0.9rem; color: #999; margin-left: 10px; }
-        .contact-btns { display: flex; gap: 8px; }
-        .btn-call, .btn-sms { padding: 10px 15px; border-radius: 15px; font-size: 0.9rem; text-decoration: none; font-weight: bold; display: flex; align-items: center; }
-        .btn-call { background: #c8e6c9; color: #1b5e20; } /* 진한 초록 */
-        .btn-sms { background: #ffe082; color: #ff6f00; } /* 진한 주황 */
-
-        /* 갤러리, 지도 */
-        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 10px;}
-        .gallery-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background-color: #eee; border-radius: 10px; cursor: pointer; border: 2px solid var(--main-color); }
-        .map-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
-        .btn { padding: 15px 25px; border-radius: 10px; text-decoration: none; font-size: 1.1rem; flex: 1; text-align: center; font-weight: bold; }
-        .btn-naver { background-color: #03C75A; color: #fff; }
-        .btn-kakao { background-color: #FEE500; color: #000; }
-
-        /* 계좌번호 */
-        .account-btn { width: 100%; padding: 20px; background-color: var(--sub-color); border: none; border-radius: 10px; text-align: left; font-size: 1.2rem; cursor: pointer; display: flex; justify-content: space-between; font-family: var(--cute-font); font-weight: bold; margin-bottom: 10px;}
-        .account-info { display: none; padding: 25px; background-color: #fff; font-size: 1.1rem; color: #666; text-align: left; border: 2px solid var(--sub-color); border-radius: 10px; margin-bottom: 20px;}
-        .copy-btn { float: right; background: var(--main-color); color: #fff; padding: 3px 10px; border-radius: 5px; font-size: 0.9rem; cursor: pointer; border: none; font-weight: bold;}
-
-        /* 기타 요소 */
-        .footer { position: absolute; bottom: 10px; left: 20px; font-size: 0.9rem; color: #999; font-family: var(--cute-font); background: none; padding: 0; text-align: left; }
-        .music-btn { position: fixed; top: 20px; right: 20px; width: 60px; height: 60px; background-color: rgba(255, 255, 255, 0.9); border-radius: 50%; border: 2px solid var(--main-color); box-shadow: 0 3px 8px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 999; font-size: 30px; }
-        .music-on { animation: spin 3s linear infinite; color: var(--accent-color); }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        .lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.95); justify-content: center; align-items: center; }
-        .lightbox-content { max-width: 90%; max-height: 80vh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 30px rgba(255,255,255,0.3); }
-        .close-lightbox { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 50px; font-weight: bold; cursor: pointer; z-index: 1001; }
-        .arrow { cursor: pointer; position: absolute; top: 50%; width: auto; padding: 20px; margin-top: -40px; color: white; font-weight: bold; font-size: 40px; transition: 0.3s; user-select: none; z-index: 1001; background-color: rgba(0,0,0,0.2); }
-        .prev { left: 10px; border-radius: 0 10px 10px 0; }
-        .next { right: 10px; border-radius: 10px 0 0 10px; }
-        .arrow:hover { background-color: rgba(0,0,0,0.5); }
-
-        /* 꽃잎 날리기 효과 - 하트 조각으로 수정 */
-        .petal {
-            position: fixed; top: -30px; z-index: 9999; pointer-events: none;
-            opacity: 0.9; will-change: transform;
-        }
-        .petal.type1 { width: 15px; height: 15px; background: #ff9aa2; border-radius: 50%; animation: fall-sway1 linear infinite; }
-        .petal.type2 { width: 12px; height: 12px; background: #ffb7c5; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); animation: fall-sway2 linear infinite; } /* 삼각형 */
-        .petal.type3 { width: 18px; height: 18px; background: #ffcccb; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; animation: fall-sway3 linear infinite; } /* 하트 모양 비슷하게 */
-
-        @keyframes fall-sway1 {
-            0% { transform:translateY(0) rotate(0deg) translateX(0); opacity:1; }
-            100% { transform:translateY(105vh) rotate(720deg) translateX(40px); opacity:0; }
-        }
-        @keyframes fall-sway2 {
-            0% { transform:translateY(0) rotate(0deg) translateX(0); opacity:1; }
-            100% { transform:translateY(105vh) rotate(-360deg) translateX(-30px); opacity:0; }
-        }
-        @keyframes fall-sway3 {
-            0% { transform:translateY(0) rotate(0deg) translateX(0); opacity:1; }
-            100% { transform:translateY(105vh) rotate(1080deg) translateX(20px); opacity:0; }
-        }
-    </style>
-</head>
-<body>
-
-<audio id="bgmAudio" autoplay loop><source src="bgm.mp3" type="audio/mpeg"></audio>
-<div id="musicBtn" class="music-btn" onclick="toggleMusic()">♬</div>
-
-<div class="container">
-    <div class="cover">
-        <div class="cover-title">Wedding Invitation</div>
-        <div class="cover-names">서진성 ㅁ 김성은</div>
-        <div class="cover-date">2026. 11. 15. SUN PM 12:00</div>
-    </div>
-
-    <div class="section">
-        <div class="sec-title">INVITATION</div>
-        <div class="greeting">
-            서로의 이름을 부르는 것만으로도<br>
-            사랑의 깊이를 알 수 있는 두 사람이<br>
-            꽃과 나무처럼 어우러져<br>
-            아름다운 가정을 이루려 합니다.<br><br>
-            저희의 첫걸음을 함께하시어<br>
-            축복해 주시면 감사하겠습니다.
-        </div>
-        <div>
-            <span class="highlight-name">서진성</span> · <span class="highlight-name">김성은</span>
-            <span style="font-size:1.1rem; color:#777;">의 벼론식</span>
-        </div>
-    </div>
-
-    <div class="section">
-        <div class="sec-title">CONTACT</div>
-
-        <div class="contact-photo-area">
-            <div class="contact-photo-box">
-                <img src="groom_family_cute.jpg" class="contact-photo"> <div class="contact-label">신랑측</div>
-            </div>
-            <div class="contact-photo-box">
-                <img src="bride_family_cute.jpg" class="contact-photo"> <div class="contact-label">신부측</div>
-            </div>
-        </div>
-
-        <div class="contact-list">
-            <div class="contact-row">
-                <div><span class="contact-name">서진성</span><span class="contact-role">신랑</span></div>
-                <div class="contact-btns">
-                    <a href="tel:01000000000" class="btn-call">📞 전화</a>
-                    <a href="sms:01000000000" class="btn-sms">📩 문자</a>
-                </div>
-            </div>
-            <div class="contact-row">
-                <div><span class="contact-name">서OO</span>
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    })();
+</script>
